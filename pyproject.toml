@@ -27,3 +27,6 @@ dev = [
     "ruff (>=0.16.7,<0.17.0)",
     "pre-commit (>=4.6.2,<5.0.0)"
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
