@@ -1,0 +1,38 @@
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.project import Project
+from app.schemas.project import ProjectCreate
+
+
+async def create_project(
+    db: AsyncSession,
+    project_data: ProjectCreate,
+) -> Project:
+    project = Project(
+        name=project_data.name,
+        description=project_data.description,
+    )
+
+    db.add(project)
+    await db.commit()
+    await db.refresh(project)
+
+    return project
+
+
+async def get_projects(
+    db: AsyncSession,
+) -> list[Project]:
+    result = await db.execute(select(Project))
+    return list(result.scalars().all())
+
+
+async def delete_project(
+    db: AsyncSession,
+    project_id: int,
+) -> bool:
+    result = await db.execute(delete(Project).where(Project.id == project_id))
+    await db.commit()
+
+    return result.rowcount > 0
