@@ -22,6 +22,23 @@ async def create_project(
     return project
 
 
+async def get_project(
+    db: AsyncSession,
+    project_id: int,
+) -> Project:
+    result = await db.execute(select(Project).where(Project.id == project_id))
+
+    project = result.scalar_one_or_none()
+
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    return project
+
+
 async def get_projects(
     db: AsyncSession,
 ) -> list[Project]:
