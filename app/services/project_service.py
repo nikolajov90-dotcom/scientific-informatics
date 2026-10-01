@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +22,23 @@ async def create_project(
     return project
 
 
+async def get_project(
+    db: AsyncSession,
+    project_id: int,
+) -> Project:
+    result = await db.execute(select(Project).where(Project.id == project_id))
+
+    project = result.scalar_one_or_none()
+
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    return project
+
+
 async def get_projects(
     db: AsyncSession,
 ) -> list[Project]:
@@ -31,8 +49,12 @@ async def get_projects(
 async def delete_project(
     db: AsyncSession,
     project_id: int,
-) -> bool:
+) -> None:
     result = await db.execute(delete(Project).where(Project.id == project_id))
     await db.commit()
 
-    return result.rowcount > 0
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
