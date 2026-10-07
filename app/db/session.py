@@ -1,9 +1,11 @@
+import os
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.base import Base
 from app.models import AnnotationFile, Project, Variant, VCFFile  # noqa: F401
 
-DATABASE_URL = "postgresql+asyncpg://postgres:postgres@db:5432/scientific_informatics"
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 
