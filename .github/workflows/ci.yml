@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - week5
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -92,6 +94,7 @@ jobs:
         run: poetry run pytest
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: [lint, format, test]
     runs-on: ubuntu-latest
 
