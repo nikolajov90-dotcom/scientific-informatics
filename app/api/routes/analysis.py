@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -7,6 +8,7 @@ from app.schemas.summary import ScientificSummaryResponse
 from app.schemas.variant import VariantResponse
 from app.services.annotation_service import (
     annotate_vcf,
+    create_af_significance_heatmap,
     filter_variants,
     get_high_risk_variants,
     scientific_summary,
@@ -132,3 +134,26 @@ async def get_high_risk_variants_endpoint(
         )
         for variant in variants
     ]
+
+
+@router.get(
+    "/{vcf_id}/af-significance-heatmap",
+)
+async def get_af_significance_heatmap(
+    vcf_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    heatmap = await create_af_significance_heatmap(
+        db=db,
+        vcf_id=vcf_id,
+    )
+
+    return StreamingResponse(
+        heatmap,
+        media_type="image/png",
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=vcf_{vcf_id}_af_significance_heatmap.png"
+            )
+        },
+    )
