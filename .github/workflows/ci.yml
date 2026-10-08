@@ -59,7 +59,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/scientific_informatics
     services:
       postgres:
         image: postgres:16
