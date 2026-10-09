@@ -3,3 +3,5 @@ __pycache__/
 .venv/
 .env
 uploads/
+github-actions-permissions.json
+github-actions-trust-policy.json

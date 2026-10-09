@@ -1,8 +1,10 @@
 import shutil
 from collections import Counter
+from io import BytesIO
 from pathlib import Path
 from statistics import mean, median
 
+import matplotlib.pyplot as plt
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -391,3 +393,100 @@ async def get_high_risk_variants(
 
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def create_af_significance_heatmap(
+    db: AsyncSession,
+    vcf_id: int,
+) -> BytesIO:
+    result = await db.execute(
+        select(Variant)
+        .options(selectinload(Variant.annotation))
+        .where(Variant.vcf_file_id == vcf_id)
+    )
+    variants = list(result.scalars().all())
+
+    af_buckets = [
+        "<0.01",
+        "0.01–0.05",
+        "0.05–0.10",
+        "0.10–0.25",
+        "0.25–0.50",
+        "≥0.50",
+    ]
+
+    significance_categories = [
+        "Pathogenic",
+        "Likely_pathogenic",
+        "Benign",
+        "Likely_benign",
+        "Uncertain_significance",
+        "Not_annotated",
+    ]
+
+    matrix = [[0 for _ in af_buckets] for _ in significance_categories]
+
+    for variant in variants:
+        if variant.af is None:
+            continue
+
+        af = variant.af
+
+        if af < 0.01:
+            af_index = 0
+        elif af < 0.05:
+            af_index = 1
+        elif af < 0.10:
+            af_index = 2
+        elif af < 0.25:
+            af_index = 3
+        elif af < 0.50:
+            af_index = 4
+        else:
+            af_index = 5
+
+        significance = (
+            variant.annotation.clinical_significance if variant.annotation else None
+        )
+
+        if significance in significance_categories:
+            significance_index = significance_categories.index(significance)
+        else:
+            significance_index = significance_categories.index("Not_annotated")
+
+        matrix[significance_index][af_index] += 1
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    image = ax.imshow(matrix, aspect="auto")
+
+    ax.set_xticks(range(len(af_buckets)))
+    ax.set_xticklabels(af_buckets)
+
+    ax.set_yticks(range(len(significance_categories)))
+    ax.set_yticklabels(significance_categories)
+
+    ax.set_xlabel("Allele Frequency (AF)")
+    ax.set_ylabel("Clinical Significance")
+    ax.set_title("Variant Distribution by AF and Clinical Significance")
+
+    for i in range(len(significance_categories)):
+        for j in range(len(af_buckets)):
+            ax.text(
+                j,
+                i,
+                matrix[i][j],
+                ha="center",
+                va="center",
+            )
+
+    fig.colorbar(image, ax=ax, label="Number of Variants")
+    fig.tight_layout()
+
+    output = BytesIO()
+    fig.savefig(output, format="png", dpi=150)
+    plt.close(fig)
+
+    output.seek(0)
+
+    return output
