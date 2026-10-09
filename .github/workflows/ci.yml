@@ -4,14 +4,12 @@ on:
   push:
     branches:
       - main
-      - week5
   pull_request:
-    branches: [main]
-  workflow_dispatch:
+    branches:
+      - main
 
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -93,37 +91,3 @@ jobs:
 
       - name: Run tests
         run: poetry run pytest
-
-  deploy:
-    if: github.event_name != 'pull_request'
-    needs: [lint, format, test]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::818904800801:role/scientific-informatics-github-actions
-          aws-region: eu-north-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: 818904800801.dkr.ecr.eu-north-1.amazonaws.com
-          ECR_REPOSITORY: scientific-informatics
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-      - name: Update ECS service
-        run: |
-          aws ecs update-service \
-            --cluster scientific-informatics \
-            --service scientific-informatics-service \
-            --force-new-deployment
